@@ -4,12 +4,14 @@ Author: Rob Bebbington
 
 Get ASX sysmbols from Markey Index and insert them into our database.
 """
-
+import logging
 from datetime import datetime, timezone
 import pandas as pd
 import psycopg2
 import psycopg2.extras
 from securities_load.load.postgresql_database_functions import connect
+
+module_logger = logging.getLogger(__name__)
 
 def add_tickers(conn, ticker_list):
     """
@@ -42,6 +44,7 @@ def add_tickers(conn, ticker_list):
             # print("PostgreSQL cursor is closed")
 
 def get_gics_sector_code(conn, sector_name):
+    module_logger.info(f'Received a call to get_gics_sector_code for sector {sector_name}')
     table = 'asx.gics_sector'
     
     # create a list of columns to get from the table
