@@ -1,4 +1,0 @@
-load/.env
-load/__pycache__
-load/__pycache__/*
-load/__pycache__/asx_functions.cpython-311.pyc
