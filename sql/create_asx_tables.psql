@@ -2,8 +2,11 @@
 -- This script is dependent on create_polygon_tables.sql as for some tables
 -- rows are populated from the polygon tables.
 
+DROP TABLE IF EXISTS asx.watchlist_ticker;
 DROP TABLE IF EXISTS asx.daily_price;
 DROP TABLE IF EXISTS asx.ticker;
+DROP TABLE IF EXISTS asx.watchlist;
+DROP TABLE IF EXISTS asx.watchlist_group;
 DROP TABLE IF EXISTS asx.exchange;
 DROP TABLE IF EXISTS asx.country_currency;
 DROP TABLE IF EXISTS asx.currency;
@@ -520,7 +523,6 @@ CREATE TABLE asx.ticker (
     gics_industry_group_code char(4) NULL,
     gics_industry_code char(6) NULL,
     gics_sub_industry_code char(8) NULL,
-    gics_industry_group_name varchar(255) NULL,
     exchange_code char(8) NULL,
     listed_utc timestamp NULL, 
     listcorp_url varchar(255) NULL,
@@ -577,11 +579,11 @@ CREATE TABLE asx.daily_price (
     volume_weighted_average_price numeric(19,4) NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone,
-	CONSTRAINT fk_data_vendor
+	CONSTRAINT fk_daily_price_data_vendor
         FOREIGN KEY(data_vendor_id)
         REFERENCES equity.data_vendor(id)
         ON DELETE NO ACTION,
-    CONSTRAINT fk_ticker
+    CONSTRAINT fk_daily_price_ticker
         FOREIGN KEY(ticker_id)
         REFERENCES asx.ticker(id)
         ON DELETE CASCADE,
@@ -595,3 +597,56 @@ COMMENT ON COLUMN asx.daily_price.low IS 'The lowest price for the symbol in the
 COMMENT ON COLUMN asx.daily_price.open IS 'The open price for the symbol in the given time period.';
 COMMENT ON COLUMN asx.daily_price.volume IS 'The trading volume of the symbol in the given time period.';
 COMMENT ON COLUMN asx.daily_price.volume_weighted_average_price IS 'The volume weighted average price.';
+
+CREATE TABLE IF NOT EXISTS asx.watchlist_group (
+    name varchar(32) PRIMARY KEY,
+    definition varchar(1000) DEFAULT NULL,
+    start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone);
+
+INSERT INTO asx.watchlist_group (name, definition, start_date, end_date) VALUES
+	('GICS Sector Indices', 'Indices that reflect specific GICS sectors.', '2024-07-08', NULL),
+	('Exchange Indices', 'Indices that reflect a specific exchange.', '2024-07-08', NULL),
+	('Broker accounts', 'Stocks held under specifc brokers.', '2024-07-08', NULL);
+
+CREATE TABLE IF NOT EXISTS asx.watchlist (
+    name varchar(32) PRIMARY KEY,
+	watchlist_group_name varchar(32),
+    definition varchar(1000) DEFAULT NULL,
+    start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+		CONSTRAINT fk_watchlist_watchlist_group
+        FOREIGN KEY(watchlist_group_name)
+        REFERENCES asx.watchlist_group(name)
+        ON DELETE NO ACTION);
+
+INSERT INTO asx.watchlist (name, watchlist_group_name, definition, start_date, end_date) VALUES
+	('ASX Sectors', 'GICS Sector Indices', 'Indices that reflect the ASX GICS sectors.', '2024-07-08', NULL),
+	('ASX', 'Exchange Indices', 'Indices that reflect the ASX exchange.', '2024-07-08', NULL),
+	('Interactive Brokers', 'Broker accounts', 'Stocks held at Interactive Brokers.', '2024-07-08', NULL),
+	('CommSec - Rob & Sue', 'Broker accounts', 'Stocks held at CommSec under Rob & Sue.', '2024-07-08', NULL),
+	('CommSec - SuperBebbs', 'Broker accounts', 'Stocks held at CommSec under SuperBebbs.', '2024-07-08', NULL),
+	('eBroker - SuperBebbs', 'Broker accounts', 'Stocks held at eBroker under SuperBebbs.', '2024-07-08', NULL);
+
+CREATE TABLE IF NOT EXISTS asx.watchlist_ticker (
+	id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    watchlist_name varchar(32) NOT NULL,
+    ticker_id integer NOT NULL,
+    start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+		CONSTRAINT fk_watchlist_ticker_watchlist
+        FOREIGN KEY(watchlist_name)
+        REFERENCES asx.watchlist(name)
+        ON DELETE NO ACTION,
+		CONSTRAINT fk_watchlist_ticker_ticker
+        FOREIGN KEY(ticker_id)
+        REFERENCES asx.ticker(id)
+        ON DELETE NO ACTION,	
+		CONSTRAINT unique_watchlist_ticker
+		UNIQUE (watchlist_name, ticker_id));
