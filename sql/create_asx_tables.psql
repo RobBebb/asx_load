@@ -24,24 +24,25 @@ CREATE SCHEMA IF NOT EXISTS asx AUTHORIZATION securities;
 CREATE TABLE IF NOT EXISTS asx.gics_sector (
     code char(2) PRIMARY KEY,
     name varchar(255) NOT NULL,
+	asx_index_ticker varchar(32) DEFAULT NULL,
     definition varchar(1000) DEFAULT NULL,
     start_date date DEFAULT NULL,
     end_date date DEFAULT NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone);
 
-INSERT INTO asx.gics_sector (code, name, definition, start_date, end_date) VALUES
-	('10', 'Energy', 'The Energy Sector comprises companies engaged in exploration & production, refining & marketing, and storage & transportation of oil & gas and coal & consumable fuels. It also includes companies that offer oil & gas equipment and services.', '1999-01-01', NULL),
-	('15', 'Materials', 'The Materials Sector includes companies that manufacture chemicals, construction materials, glass, paper, forest products and related packaging products, and metals, minerals and mining companies, including producers of steel.', '1999-01-01', NULL),
-	('20', 'Industrials', 'The Industrials Sector includes manufacturers and distributors of capital goods such as aerospace & defense, building products, electrical equipment and machinery and companies that offer construction & engineering services. It also includes providers of commercial & professional services including printing, environmental and facilities services, office services & supplies, security & alarm services, human resource & employment services, research & consulting services. It also includes companies that provide transportation services.', '1999-01-01', NULL),
-	('25', 'Consumer Discretionary', 'The Consumer Discretionary Sector encompasses those businesses that tend to be the most sensitive to economic cycles. Its manufacturing segment includes automotive, household durable goods, leisure equipment and textiles & apparel. The services segment includes hotels, restaurants and other leisure facilities, media production and services, and consumer retailing and services. ', '1999-01-01', NULL),
-	('30', 'Consumer Staples', 'The Consumer Staples Sector comprises companies whose businesses are less sensitive to economic cycles. It includes manufacturers and distributors of food, beverages and tobacco and producers of non-durable household goods and personal products. It also includes food & drug retailing companies as well as hypermarkets and consumer super centers.', '1999-01-01', NULL),
-	('35', 'Health Care', 'The Health Care Sector includes health care providers & services, companies that manufacture and distribute health care equipment & supplies, and health care technology companies. It also includes companies involved in the research, development, production and marketing of pharmaceuticals and biotechnology products.', '1999-01-01', NULL),
-	('40', 'Financials', 'The Financials Sector contains companies involved in banking, thrifts & mortgage finance, specialized finance, consumer finance, asset management and custody banks, investment banking and brokerage and insurance. It also includes Financial Exchanges & Data and Mortgage REITs.', '1999-01-01', NULL),
-	('45', 'Information Technology', 'The Information Technology Sector comprises companies that offer software and information technology services, manufacturers and distributors of technology hardware & equipment such as communications equipment, cellular phones, computers & peripherals, electronic equipment and related instruments, and semiconductors.', '1999-01-01', NULL),
-	('50', 'Communication Services', 'The Communication Services Sector includes companies that facilitate communication and offer related content and information through various mediums. It includes telecom and media & entertainment companies including producers of interactive gaming products and companies engaged in content and information creation or distribution through proprietary platforms.', '1999-01-01', NULL),
-	('55', 'Utilities', 'The Utilities Sector comprises utility companies such as electric, gas and water utilities. It also includes independent power producers & energy traders and companies that engage in generation and distribution of electricity using renewable sources.', '1999-01-01', NULL),
-	('60', 'Real Estate', 'The Real Estate Sector contains companies engaged in real estate development and operation. It also includes companies offering real estate related services and Equity Real Estate Investment Trusts (REITs).', '1999-01-01', NULL);
+INSERT INTO asx.gics_sector (code, name, asx_index_ticker, definition, start_date, end_date) VALUES
+	('10', 'Energy', 'XEJ', 'The Energy Sector comprises companies engaged in exploration & production, refining & marketing, and storage & transportation of oil & gas and coal & consumable fuels. It also includes companies that offer oil & gas equipment and services.', '1999-01-01', NULL),
+	('15', 'Materials', 'XMJ', 'The Materials Sector includes companies that manufacture chemicals, construction materials, glass, paper, forest products and related packaging products, and metals, minerals and mining companies, including producers of steel.', '1999-01-01', NULL),
+	('20', 'Industrials', 'XNJ', 'The Industrials Sector includes manufacturers and distributors of capital goods such as aerospace & defense, building products, electrical equipment and machinery and companies that offer construction & engineering services. It also includes providers of commercial & professional services including printing, environmental and facilities services, office services & supplies, security & alarm services, human resource & employment services, research & consulting services. It also includes companies that provide transportation services.', '1999-01-01', NULL),
+	('25', 'Consumer Discretionary', 'XDJ', 'The Consumer Discretionary Sector encompasses those businesses that tend to be the most sensitive to economic cycles. Its manufacturing segment includes automotive, household durable goods, leisure equipment and textiles & apparel. The services segment includes hotels, restaurants and other leisure facilities, media production and services, and consumer retailing and services. ', '1999-01-01', NULL),
+	('30', 'Consumer Staples', 'XSJ', 'The Consumer Staples Sector comprises companies whose businesses are less sensitive to economic cycles. It includes manufacturers and distributors of food, beverages and tobacco and producers of non-durable household goods and personal products. It also includes food & drug retailing companies as well as hypermarkets and consumer super centers.', '1999-01-01', NULL),
+	('35', 'Health Care', 'XHJ', 'The Health Care Sector includes health care providers & services, companies that manufacture and distribute health care equipment & supplies, and health care technology companies. It also includes companies involved in the research, development, production and marketing of pharmaceuticals and biotechnology products.', '1999-01-01', NULL),
+	('40', 'Financials', 'XFJ', 'The Financials Sector contains companies involved in banking, thrifts & mortgage finance, specialized finance, consumer finance, asset management and custody banks, investment banking and brokerage and insurance. It also includes Financial Exchanges & Data and Mortgage REITs.', '1999-01-01', NULL),
+	('45', 'Information Technology', 'XIJ', 'The Information Technology Sector comprises companies that offer software and information technology services, manufacturers and distributors of technology hardware & equipment such as communications equipment, cellular phones, computers & peripherals, electronic equipment and related instruments, and semiconductors.', '1999-01-01', NULL),
+	('50', 'Communication Services', 'XTJ', 'The Communication Services Sector includes companies that facilitate communication and offer related content and information through various mediums. It includes telecom and media & entertainment companies including producers of interactive gaming products and companies engaged in content and information creation or distribution through proprietary platforms.', '1999-01-01', NULL),
+	('55', 'Utilities', 'XUJ', 'The Utilities Sector comprises utility companies such as electric, gas and water utilities. It also includes independent power producers & energy traders and companies that engage in generation and distribution of electricity using renewable sources.', '1999-01-01', NULL),
+	('60', 'Real Estate', 'XPJ', 'The Real Estate Sector contains companies engaged in real estate development and operation. It also includes companies offering real estate related services and Equity Real Estate Investment Trusts (REITs).', '1999-01-01', NULL);
 
 
 CREATE TABLE IF NOT EXISTS asx.gics_industry_group (
@@ -516,14 +517,14 @@ INSERT INTO asx.exchange (code, name, definition, country_alpha_3, currency_code
 
 CREATE TABLE asx.ticker (
     id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    ticker varchar(32) UNIQUE NOT NULL,
+    ticker varchar(32) NOT NULL,
     yahoo_ticker varchar(32) NULL,
     name varchar (255) NULL,
     gics_sector_code char(2) NULL,
     gics_industry_group_code char(4) NULL,
     gics_industry_code char(6) NULL,
     gics_sub_industry_code char(8) NULL,
-    exchange_code char(8) NULL,
+    exchange_code char(8) NOT NULL,
     listed_utc timestamp NULL, 
     listcorp_url varchar(255) NULL,
     market_type varchar(32) NULL,    
@@ -532,6 +533,8 @@ CREATE TABLE asx.ticker (
     end_date date DEFAULT NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone,
+	CONSTRAINT unique_ticker 
+		UNIQUE (exchange_code, ticker),
     CONSTRAINT fk_ticker_exchange
         FOREIGN KEY(exchange_code)
         REFERENCES asx.exchange(code)
@@ -568,6 +571,7 @@ CREATE TABLE asx.daily_price (
     id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     data_vendor_id integer NOT NULL,
     ticker_id integer NULL,
+    exchange_code char(8) NULL,
     ticker varchar(32) NOT NULL,
     date date NOT NULL,
     open numeric(19,4) NULL,
@@ -612,14 +616,16 @@ INSERT INTO asx.watchlist_group (name, definition, start_date, end_date) VALUES
 	('Broker accounts', 'Stocks held under specifc brokers.', '2024-07-08', NULL);
 
 CREATE TABLE IF NOT EXISTS asx.watchlist (
-    name varchar(32) PRIMARY KEY,
-	watchlist_group_name varchar(32),
+    name varchar(32) NOT NULL,
+	watchlist_group_name varchar(32) NOT NULL,
     definition varchar(1000) DEFAULT NULL,
     start_date date DEFAULT NULL,
     end_date date DEFAULT NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone,
-		CONSTRAINT fk_watchlist_watchlist_group
+	CONSTRAINT pk_watchlist
+    	PRIMARY KEY(watchlist_group_name, name),
+	CONSTRAINT fk_watchlist_watchlist_group
         FOREIGN KEY(watchlist_group_name)
         REFERENCES asx.watchlist_group(name)
         ON DELETE NO ACTION);
@@ -634,19 +640,25 @@ INSERT INTO asx.watchlist (name, watchlist_group_name, definition, start_date, e
 
 CREATE TABLE IF NOT EXISTS asx.watchlist_ticker (
 	id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	watchlist_group_name varchar(32) NOT NULL,
     watchlist_name varchar(32) NOT NULL,
     ticker_id integer NOT NULL,
+	gics_sector_code char(2) NULL,
     start_date date DEFAULT NULL,
     end_date date DEFAULT NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone,
-		CONSTRAINT fk_watchlist_ticker_watchlist
-        FOREIGN KEY(watchlist_name)
-        REFERENCES asx.watchlist(name)
+	CONSTRAINT fk_watchlist_ticker_watchlist
+        FOREIGN KEY(watchlist_group_name, watchlist_name)
+        REFERENCES asx.watchlist(watchlist_group_name, name)
         ON DELETE NO ACTION,
-		CONSTRAINT fk_watchlist_ticker_ticker
+	CONSTRAINT fk_watchlist_ticker_ticker
         FOREIGN KEY(ticker_id)
         REFERENCES asx.ticker(id)
-        ON DELETE NO ACTION,	
-		CONSTRAINT unique_watchlist_ticker
+        ON DELETE NO ACTION,
+	CONSTRAINT fk_ticker_sector
+        FOREIGN KEY(gics_sector_code)
+        REFERENCES asx.gics_sector(code)
+        ON DELETE NO ACTION,
+	CONSTRAINT unique_watchlist_ticker
 		UNIQUE (watchlist_name, ticker_id));

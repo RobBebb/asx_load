@@ -6,6 +6,7 @@ Get ASX sysmbols from Markey Index and insert them into our database.
 """
 import logging
 from datetime import datetime, timezone
+import string
 import pandas as pd
 import psycopg2
 import psycopg2.extras
@@ -13,14 +14,15 @@ from securities_load.load.postgresql_database_functions import connect
 
 module_logger = logging.getLogger(__name__)
 
-def add_tickers(conn, ticker_list):
+def add_tickers(conn, ticker_list: str) -> None:
     """
     Adds a tickers to the ticker table
     Parameters:
         conn - database connection
         ticker_df - dataframe of tickers
     """
-
+    module_logger.debug('Started')
+    
     table = "asx.ticker"
 
     # create a list of columns from the dataframe
@@ -35,22 +37,23 @@ def add_tickers(conn, ticker_list):
         # add the rows from the dataframe to the table
         psycopg2.extras.execute_batch(cur, insert_stmt, ticker_list.values)
         conn.commit()
-        print(f"{ticker_list.shape[0]} rows added to {table} table.")
+        module_logger.info(f"{ticker_list.shape[0]} rows added to {table} table.")
     except psycopg2.Error as error:
-        print("Error while inserting tickers to PostgreSQL", error)
+        module_logger.error("Error while inserting tickers to PostgreSQL", error)
     finally:
         if conn:
             cur.close()
             # print("PostgreSQL cursor is closed")
 
-def add_or_update_tickers(conn, ticker_list):
+def add_or_update_tickers(conn, ticker_list: pd.DataFrame) -> None:
     """
     Adds a tickers to the ticker table
     Parameters:
         conn - database connection
         ticker_df - dataframe of tickers
     """
-
+    module_logger.debug('Started')
+    
     table = "asx.ticker"
 
     # create a list of columns from the dataframe
@@ -62,22 +65,48 @@ def add_or_update_tickers(conn, ticker_list):
     conflict_columns = ", ".join(['EXCLUDED.' + column for column in table_columns])
     # create INSERT INTO table (columns) VALUES('%s',...)
     insert_stmt = f"INSERT INTO {table} ({columns}) VALUES ({values}) ON CONFLICT (ticker) DO UPDATE SET ({columns}, last_updated_date) = ({conflict_columns}, CURRENT_TIMESTAMP)"
-    print(insert_stmt)
     try:
         cur = conn.cursor()
         # add the rows from the dataframe to the table
         psycopg2.extras.execute_batch(cur, insert_stmt, ticker_list.values)
         conn.commit()
-        print(f"{ticker_list.shape[0]} rows added to {table} table.")
+        module_logger.info(f"{ticker_list.shape[0]} rows added to {table} table.")
     except psycopg2.Error as error:
-        print("Error while inserting tickers to PostgreSQL", error)
+        module_logger.error("Error while inserting tickers to PostgreSQL", error)
     finally:
         if conn:
             cur.close()
             # print("PostgreSQL cursor is closed")
 
-def get_gics_sector_code(conn, sector_name):
-    # module_logger.debug(f'Received a call to get_gics_sector_code for sector {sector_name}')
+def get_ticker_id(conn, exchange_code: str, ticker: str) -> int:
+    """
+    Read the ticker table and return ticker_id
+    Parameters:
+        conn - database connection
+        ticker - name of the instrument
+    """
+    module_logger.debug('Started')
+
+    table = "asx.ticker"
+
+    # create a list of columns from the dataframe
+    table_columns = "id"
+
+    cur = conn.cursor()
+
+    select_stmt = f"SELECT {table_columns} FROM {table} WHERE ticker = '{ticker}' AND exchange_code = '{exchange_code}'"
+    cur.execute(select_stmt)
+    tickers = cur.fetchall()
+    for row in tickers:
+        ticker_id = row[0]
+        module_logger.debug(f"ticker_id for ticker {ticker} is {ticker_id}.")
+        return ticker_id
+    
+    module_logger.debug(f'Ticker {ticker} cannot be found in {table}')
+    return None
+
+def get_gics_sector_code(conn, sector_name: str) -> str:
+    module_logger.debug('Started')
     table = 'asx.gics_sector'
     
     # create a list of columns to get from the table
@@ -91,12 +120,13 @@ def get_gics_sector_code(conn, sector_name):
     codes = cur.fetchall()
     for row in codes:
         code = row[0]
-        # print(f"get_gics_sector_code - Sector code for {sector_name} is {code}.")
-        break
-
-    return code
+        return code    
+    
+    module_logger.debug(f'Sector_name {sector_name} cannot be found in {table}')
+    return None
 
 def get_gics_industry_group_code(conn, industry_group_name):
+    module_logger.debug('Started')
     table = 'asx.gics_industry_group'
     
     # create a list of columns to get from the table
@@ -109,16 +139,13 @@ def get_gics_industry_group_code(conn, industry_group_name):
     codes = cur.fetchall()
     for row in codes:
         code = row[0]
-        # print(f"get_gics_sector_code - Sector code for {sector_name} is {code}.")
-        break
-    try:
-        code
-    except NameError:
-        code = None
-        print(f'Industry_group_name {industry_group_name} cannot be found in {table}')
-    return code
+        return code
+        
+    module_logger.debug(f'Industry_group_name {industry_group_name} cannot be found in {table}')
+    return None
 
 def get_gics_industry_code(conn, industry_name):
+    module_logger.debug('Started')
     table = 'asx.gics_industry'
     
     # create a list of columns to get from the table
@@ -131,16 +158,13 @@ def get_gics_industry_code(conn, industry_name):
     codes = cur.fetchall()
     for row in codes:
         code = row[0]
-        # print(f"get_gics_sector_code - Sector code for {sector_name} is {code}.")
-        break
-    try:
-        code
-    except NameError:
-        code = None
-        print(f'Industry_name {industry_name} cannot be found in {table}')
-    return code
+        return code
+
+    module_logger.debug(f'Industry_name {industry_name} cannot be found in {table}')
+    return None
 
 def get_gics_sub_industry_code(conn, sub_industry_name):
+    module_logger.debug('Started')
     table = 'asx.gics_sub_industry'
     
     # create a list of columns to get from the table
@@ -153,11 +177,7 @@ def get_gics_sub_industry_code(conn, sub_industry_name):
     codes = cur.fetchall()
     for row in codes:
         code = row[0]
-        # print(f"get_gics_sector_code - Sector code for {sector_name} is {code}.")
-        break
-    try:
-        code
-    except NameError:
-        code = None
-        print(f'Sub_industry_name {sub_industry_name} cannot be found in {table}')
-    return code
+        return code
+    
+    module_logger.debug(f'Sub_industry_name {sub_industry_name} cannot be found in {table}')
+    return None

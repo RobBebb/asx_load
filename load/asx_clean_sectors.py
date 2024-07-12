@@ -4,12 +4,9 @@ import logging
 import pandas as pd
 
 from securities_load.load.postgresql_database_functions import connect
-from asx_load.load.asx_functions import get_gics_sector_code
-from asx_load.load.asx_functions import get_gics_industry_group_code
-from asx_load.load.asx_functions import get_gics_industry_code
-from asx_load.load.asx_functions import get_gics_sub_industry_code
-from asx_load.load.asx_functions import add_tickers
-from asx_load.load.asx_functions import add_or_update_tickers
+from asx_load.load.asx_functions import (get_gics_sector_code, get_gics_industry_group_code,
+                                         get_gics_industry_code, get_gics_sub_industry_code,
+                                         add_or_update_tickers, get_ticker_id)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='asx_load.log',
@@ -28,11 +25,45 @@ pd.options.mode.chained_assignment = None
 logger.info('Chained assignments disabled')
 
 def read_company_gics_codes() -> pd.DataFrame:
+    """ Read in the ASX Sectors with Companies.xlsx Excel file and get the first sheet.
+    This sheet list all the ASX companies broken down by their GICS codes"""
     logger.debug('Started')
-    # Read in the Asx Sectors Excel file as a dictionary where each key is a sheet and each value is a dataframe of the sheet data
     companies = pd.read_excel('data/ASX Sectors with Companies.xlsx', sheet_name = 'Sectors')
     logger.debug('File read')
     return companies
+
+def read_indices() -> pd.DataFrame:
+    """ Read the ASX_indices.csv text file. This file lists the ASX indices. It has their
+    name, ticker and the yahoo tocker where applicable."""
+    logger.debug('Started')
+    # Read in the Asx indices csv file
+    indices = pd.read_csv('data/ASX_indices.csv', header=None)
+    logger.debug('File read')
+    return indices
+
+def read_watchlists() -> pd.DataFrame:
+    """ Read the watchlists.csv text file. This file lists the ASX indices. It has their
+    name, ticker and the yahoo tocker where applicable."""
+    logger.debug('Started')
+    # Read in the Asx indices csv file
+    indices = pd.read_csv('data/ASX_indices.csv', header=None)
+    logger.debug('File read')
+    return indices
+
+def transform_indices(conn, indices: pd.DataFrame) -> pd.DataFrame:
+    """Cleans and transforms the ASX indices"""
+    logger.debug('Started')
+    transformed_indices = indices.iloc[:,0].str.split(pat='(', expand=True)
+    transformed_indices.columns = ['name', 'ticker']
+    transformed_indices.ticker = transformed_indices.ticker.str.strip(')')
+    transformed_indices["yahoo_ticker"] = indices.iloc[:,1]
+    # transformed_indices["yahoo_ticker"] = transformed_indices["yahoo_ticker"].fillna("None")
+    transformed_indices["yahoo_ticker"] = [d if not pd.isnull(d) else None for d in transformed_indices["yahoo_ticker"]]
+    # df['date'] = [d.strftime('%Y-%m-%d') if not pd.isnull(d) else None for d in df['date']]
+    transformed_indices['exchange_code'] = 'ASX'
+    transformed_indices['asset_class_type'] = 'indices'
+    transformed_indices['market_type'] = 'indices'
+    return transformed_indices
 
 def clean_companies(companies: pd.DataFrame) -> pd.DataFrame:
     logger.debug('Started')
@@ -101,6 +132,13 @@ def load_companies(conn, companies: pd.DataFrame):
     
     return
     
+def load_indices(conn, indices: pd.DataFrame):
+    logger.debug('Started')
+    
+    add_or_update_tickers(conn, indices)
+    
+    return
+
 
 companies = read_company_gics_codes()
 
@@ -116,11 +154,16 @@ sectors = get_sectors(conn, cleaned_companies)
 # print(f'sector_tickers are {sectors.sector_ticker.to_list()}')
 
 transformed_companies = transform_companies(conn, cleaned_companies)
-print(transformed_companies.head())
-print(transformed_companies.info())
-print(transformed_companies.iloc[0])
+# print(transformed_companies.head())
+# print(transformed_companies.info())
+# print(transformed_companies.iloc[0])
+
+indices = read_indices()
+transformed_indices = transform_indices(conn, indices)
+print(transformed_indices.iloc[0])
 
 load_companies(conn, transformed_companies)
+load_indices(conn, transformed_indices)
 
 # Close the connection
 conn.close()
