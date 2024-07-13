@@ -661,4 +661,4 @@ CREATE TABLE IF NOT EXISTS asx.watchlist_ticker (
         REFERENCES asx.gics_sector(code)
         ON DELETE NO ACTION,
 	CONSTRAINT unique_watchlist_ticker
-		UNIQUE (watchlist_name, ticker_id));
+		UNIQUE (watchlist_group_name, watchlist_name, ticker_id));

@@ -6,7 +6,8 @@ import pandas as pd
 from securities_load.load.postgresql_database_functions import connect
 from asx_load.load.asx_functions import (get_gics_sector_code, get_gics_industry_group_code,
                                          get_gics_industry_code, get_gics_sub_industry_code,
-                                         add_or_update_tickers, get_ticker_id)
+                                         get_ticker_id, add_or_update_tickers, get_ticker_id,
+                                         add_or_update_watchlist_tickers)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='asx_load.log',
@@ -41,14 +42,13 @@ def read_indices() -> pd.DataFrame:
     logger.debug('File read')
     return indices
 
-def read_watchlists() -> pd.DataFrame:
-    """ Read the watchlists.csv text file. This file lists the ASX indices. It has their
-    name, ticker and the yahoo tocker where applicable."""
+def read_watchlist_tickers() -> pd.DataFrame:
+    """ Read the watchlists.csv text file. This file id a list of watchlists and their constituent tickers"""
     logger.debug('Started')
-    # Read in the Asx indices csv file
-    indices = pd.read_csv('data/ASX_indices.csv', header=None)
+    # Read in the watcjlist csv file
+    watchlist_tickers = pd.read_csv('data/watchlists.csv')
     logger.debug('File read')
-    return indices
+    return watchlist_tickers
 
 def transform_indices(conn, indices: pd.DataFrame) -> pd.DataFrame:
     """Cleans and transforms the ASX indices"""
@@ -80,6 +80,7 @@ def transform_companies(conn, companies: pd.DataFrame) -> pd.DataFrame:
     gics_industries = []
     gics_sub_industries = []
 
+    companies['exchange_code'] = 'ASX'
     companies['ticker'] = companies['code'].str.replace('ASX:','')
     companies['yahoo_ticker'] = companies['ticker'] + '.AX'
     companies['listcorp_url'] = 'https://www.listcorp.com/' + companies['market'] + '/' + companies['ticker']
@@ -104,6 +105,25 @@ def transform_companies(conn, companies: pd.DataFrame) -> pd.DataFrame:
     companies['gics_sub_industry_code'] = gics_sub_industries
 
     return companies
+
+def transform_watchlist_tickers(conn, watchlist_tickers: pd.DataFrame) -> pd.DataFrame:
+    logger.debug('Started')
+    watchlist_tickers['gics_sector_code'] = watchlist_tickers['gics_sector_code'].astype(str)
+    
+    tickers = []
+    
+    for row in watchlist_tickers.itertuples(name='none'):
+        exchange_code = row.exchange_code
+        ticker = row.ticker
+        logger.debug(f'exchange code {exchange_code}')
+        logger.debug(f'ticker {ticker}')
+        ticker_id = get_ticker_id(conn, exchange_code, ticker)
+        tickers.append(ticker_id)
+
+    watchlist_tickers['ticker_id'] = tickers
+
+    return watchlist_tickers
+
 
 def get_sectors(conn, companies: pd.DataFrame) -> pd.DataFrame:
     logger.debug('Started')
@@ -139,6 +159,15 @@ def load_indices(conn, indices: pd.DataFrame):
     
     return
 
+def load_watchlist_tickers(conn, transformed_watchlist_tickers: pd.DataFrame):
+    logger.debug('Started')
+    
+    transformed_watchlist_tickers.drop(columns=['exchange_code', 'ticker'], inplace=True)
+    
+    add_or_update_watchlist_tickers(conn, transformed_watchlist_tickers)
+    
+    return
+
 
 companies = read_company_gics_codes()
 
@@ -160,10 +189,14 @@ transformed_companies = transform_companies(conn, cleaned_companies)
 
 indices = read_indices()
 transformed_indices = transform_indices(conn, indices)
-print(transformed_indices.iloc[0])
+# print(transformed_indices.iloc[0])
 
 load_companies(conn, transformed_companies)
 load_indices(conn, transformed_indices)
+
+watchlist_tickers = read_watchlist_tickers()
+transformed_watchlist_tickers = transform_watchlist_tickers(conn, watchlist_tickers)
+load_watchlist_tickers(conn, transformed_watchlist_tickers)
 
 # Close the connection
 conn.close()

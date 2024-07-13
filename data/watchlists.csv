@@ -1,4 +1,4 @@
-watchlist_group,watchlist,exchange_code,ticker,gics_sector_code
+watchlist_group_name,watchlist_name,exchange_code,ticker,gics_sector_code
 GICS Sector Indices,ASX Sectors,ASX,XEJ,10
 GICS Sector Indices,ASX Sectors,ASX,XMJ,15
 GICS Sector Indices,ASX Sectors,ASX,XNJ,20
