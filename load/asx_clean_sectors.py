@@ -25,7 +25,7 @@ logger.info('Start')
 pd.options.mode.chained_assignment = None 
 logger.info('Chained assignments disabled')
 
-def read_company_gics_codes() -> pd.DataFrame:
+def read_asx_company_gics_codes() -> pd.DataFrame:
     """ Read in the ASX Sectors with Companies.xlsx Excel file and get the first sheet.
     This sheet list all the ASX companies broken down by their GICS codes"""
     logger.debug('Started')
@@ -57,12 +57,12 @@ def transform_indices(conn, indices: pd.DataFrame) -> pd.DataFrame:
     transformed_indices.columns = ['name', 'ticker']
     transformed_indices.ticker = transformed_indices.ticker.str.strip(')')
     transformed_indices["yahoo_ticker"] = indices.iloc[:,1]
-    # transformed_indices["yahoo_ticker"] = transformed_indices["yahoo_ticker"].fillna("None")
+    # The following line sets the value of yahoo_ticker to None where the value is NA. 
+    # The reason for this is that PostgreSQL will treat None as nullwhereas NA is not treated as null.
     transformed_indices["yahoo_ticker"] = [d if not pd.isnull(d) else None for d in transformed_indices["yahoo_ticker"]]
     # df['date'] = [d.strftime('%Y-%m-%d') if not pd.isnull(d) else None for d in df['date']]
     transformed_indices['exchange_code'] = 'ASX'
-    transformed_indices['asset_class_type'] = 'indices'
-    transformed_indices['market_type'] = 'indices'
+    transformed_indices['ticker_type_code'] = 'index'
     return transformed_indices
 
 def clean_companies(companies: pd.DataFrame) -> pd.DataFrame:
@@ -103,6 +103,8 @@ def transform_companies(conn, companies: pd.DataFrame) -> pd.DataFrame:
     companies['gics_industry_group_code'] = gics_industry_groups
     companies['gics_industry_code'] = gics_industries
     companies['gics_sub_industry_code'] = gics_sub_industries
+    companies['exchange_code'] = 'ASX'
+    companies['ticker_type_code'] = 'stock'
 
     return companies
 
@@ -143,11 +145,8 @@ def get_sectors(conn, companies: pd.DataFrame) -> pd.DataFrame:
 
 def load_companies(conn, companies: pd.DataFrame):
     logger.debug('Started')
-    tickers = companies[['ticker', 'yahoo_ticker', 'name', 'gics_sector_code', 'gics_industry_group_code', 'gics_industry_code', 'gics_sub_industry_code', 'listcorp_url']]
-    tickers['exchange_code'] = 'ASX'
-    tickers['market_type'] = 'stocks'
-    tickers['asset_class_type'] = 'stocks'
     
+    tickers = companies[['ticker', 'yahoo_ticker', 'name', 'gics_sector_code', 'gics_industry_group_code', 'gics_industry_code', 'gics_sub_industry_code', 'listcorp_url', 'exchange_code', 'ticker_type_code']]
     add_or_update_tickers(conn, tickers)
     
     return
@@ -169,7 +168,7 @@ def load_watchlist_tickers(conn, transformed_watchlist_tickers: pd.DataFrame):
     return
 
 
-companies = read_company_gics_codes()
+companies = read_asx_company_gics_codes()
 
 cleaned_companies = clean_companies(companies)
 

@@ -1,25 +1,43 @@
 -- The asx schema contains data that has been cleaned and transforned.
--- This script is dependent on create_polygon_tables.sql as for some tables
--- rows are populated from the polygon tables.
 
-DROP TABLE IF EXISTS asx.watchlist_ticker;
 DROP TABLE IF EXISTS asx.daily_price;
+DROP TABLE IF EXISTS asx.watchlist_ticker;
 DROP TABLE IF EXISTS asx.ticker;
 DROP TABLE IF EXISTS asx.watchlist;
 DROP TABLE IF EXISTS asx.watchlist_group;
+DROP TABLE IF EXISTS asx.dividend;
+DROP TABLE IF EXISTS asx.split;
+DROP TABLE IF EXISTS asx.dividend_type;
+DROP TABLE IF EXISTS asx.ticker_type;
 DROP TABLE IF EXISTS asx.exchange;
 DROP TABLE IF EXISTS asx.country_currency;
-DROP TABLE IF EXISTS asx.currency;
 DROP TABLE IF EXISTS asx.country;
+DROP TABLE IF EXISTS asx.currency;
 DROP TABLE IF EXISTS asx.gics;
 DROP TABLE IF EXISTS asx.gics_sub_industry;
 DROP TABLE IF EXISTS asx.gics_industry;
 DROP TABLE IF EXISTS asx.gics_industry_group;
 DROP TABLE IF EXISTS asx.gics_sector;
+DROP TABLE IF EXISTS asx.data_vendor;
 
 DROP SCHEMA IF EXISTS asx;
 
 CREATE SCHEMA IF NOT EXISTS asx AUTHORIZATION securities;
+
+CREATE TABLE asx.data_vendor (
+    id integer PRIMARY KEY,
+    name varchar(64) NOT NULL,
+    website_url varchar(255) NULL,
+    support_email varchar(255) NULL,
+	start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone);
+
+INSERT INTO asx.data_vendor (id, name, website_url, support_email) VALUES
+	(1, 'Yahoo', 'https://au.finance.yahoo.com/', Null),
+	(2, 'polygon.io', 'https://polygon.io/', 'support@polygon.io'),
+	(3, 'Interactive Brokers', 'https://www.interactivebrokers.com.au/en/home.php', Null);
 
 CREATE TABLE IF NOT EXISTS asx.gics_sector (
     code char(2) PRIMARY KEY,
@@ -327,7 +345,7 @@ INSERT INTO asx.gics_sub_industry (code, name, description, industry_code, start
 	('40201060', 'Transaction & Payment Processing Services', 'Providers of transaction & payment processing services and related payment services including digital/mobile payment processors, payment service providers & gateways, and digital wallet providers.', '402010', '2023-03-17', NULL),
 	('40202010', 'Consumer Finance', 'Providers of consumer finance services, including personal credit, credit cards, lease financing, travel-related money services and pawn shops.  Excludes mortgage lenders classified in the Thrifts & Mortgage Finance Sub-Industry.', '402020', '1999-01-01', NULL),
 	('40203010', 'Asset Management & Custody Banks', 'Financial institutions primarily engaged in investment management and/or related custody and securities fee-based services. Includes companies operating mutual funds, closed-end funds and unit investment trusts.  Excludes banks and other financial institutions primarily involved in commercial lending, investment banking, brokerage and other specialized financial activities. ', '402030', '1999-01-01', NULL),
-	('40203020', 'Investment Banking & Brokerage', 'Financial institutions primarily engaged in investment banking & brokerage services, including equity and debt underwriting, mergers and acquisitions, securities lending and advisory services. Excludes banks and other financial institutions primarily involved in commercial lending, asset management and specialized financial activities. ', '402030', '1999-01-01', NULL),
+	('40203020', 'Investment Banking & Brokerage', 'Financial institutions primarily engaged in investment banking & brokerage services, including asx and debt underwriting, mergers and acquisitions, securities lending and advisory services. Excludes banks and other financial institutions primarily involved in commercial lending, asset management and specialized financial activities. ', '402030', '1999-01-01', NULL),
 	('40203030', 'Diversified Capital Markets', 'Financial institutions primarily engaged in diversified capital markets activities, including a significant presence in at least two of the following area: large/major corporate lending, investment banking, brokerage and asset management. Excludes less diversified companies classified in the Asset Management & Custody Banks or Investment Banking & Brokerage sub-industries.  Also excludes companies classified in the Banks or Insurance industry groups or the Consumer Finance Sub-Industry. ', '402030', '1999-01-01', NULL),
 	('40203040', 'Financial Exchanges & Data', 'Financial  exchanges  for  securities,  commodities,  derivatives and other financial instruments, and providers of financial decision support tools and products  including ratings agencies', '402030', '1999-01-01', NULL),
 	('40204010', 'Mortgage REITs', 'Companies or Trusts that service, originate, purchase and/or securitize residential and/or commercial mortgage loans.  Includes trusts that invest in mortgage-backed securities and other mortgage related assets.', '402040', '1999-01-01', NULL),
@@ -444,20 +462,177 @@ CREATE TABLE IF NOT EXISTS asx.currency (
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone);
 
-INSERT INTO asx.currency(
-	code, currency, minor_unit, symbol)
-SELECT	code, currency, minor_unit, symbol FROM
-(SELECT DISTINCT(code, currency, minor_unit, symbol), code, currency, minor_unit, symbol
-	FROM equity.currency
-	WHERE (NOT(code = 'AUD' AND symbol IS NULL))
-	AND
-	(NOT(code = 'DKK' AND symbol IS NULL))
-	AND
-	(NOT(code = 'MAD' AND symbol IS NULL))
-	AND
-	(NOT(code = 'NOK' AND symbol IS NULL))
-	AND
-	(NOT(code = 'ZAR' AND symbol IS NULL))) AS DIS_CURR;
+INSERT INTO asx.currency (code,currency,minor_unit,symbol) VALUES
+	 ('AED ','UAE Dirham',2,'د.إ'),
+	 ('AFN ','Afghani',2,'؋'),
+	 ('ALL ','Lek',2,'Lek'),
+	 ('AMD ','Armenian Dram',2,NULL),
+	 ('ANG ','Netherlands Antillean Guilder',2,NULL),
+	 ('AOA ','Kwanza',2,NULL),
+	 ('ARS ','Argentine Peso',2,'$'),
+	 ('AUD ','Australian Dollar',2,'$'),
+	 ('AWG ','Aruban Florin',2,NULL),
+	 ('AZN ','Azerbaijan Manat',2,NULL),
+	 ('BAM ','Convertible Mark',2,NULL),
+	 ('BBD ','Barbados Dollar',2,'$'),
+	 ('BDT ','Taka',2,'৳'),
+	 ('BGN ','Bulgarian Lev',2,'лв'),
+	 ('BHD ','Bahraini Dinar',3,NULL),
+	 ('BIF ','Burundi Franc',0,NULL),
+	 ('BMD ','Bermudian Dollar',2,NULL),
+	 ('BND ','Brunei Dollar',2,NULL),
+	 ('BOB ','Boliviano',2,NULL),
+	 ('BOV ','Mvdol',2,NULL),
+	 ('BRL ','Brazilian Real',2,'R$'),
+	 ('BSD ','Bahamian Dollar',2,'$'),
+	 ('BTN ','Ngultrum',2,NULL),
+	 ('BWP ','Pula',2,NULL),
+	 ('BYN ','Belarusian Ruble',2,NULL),
+	 ('BZD ','Belize Dollar',2,'BZ$'),
+	 ('CAD ','Canadian Dollar',2,'$'),
+	 ('CDF ','Congolese Franc',2,NULL),
+	 ('CHE ','WIR Euro',2,NULL),
+	 ('CHF ','Swiss Franc',2,NULL),
+	 ('CHW ','WIR Franc',2,NULL),
+	 ('CLF ','Unidad de Fomento',4,NULL),
+	 ('CLP ','Chilean Peso',0,'$'),
+	 ('CNY ','Yuan Renminbi',2,'¥'),
+	 ('COP ','Colombian Peso',2,'$'),
+	 ('COU ','Unidad de Valor Real',2,NULL),
+	 ('CRC ','Costa Rican Colon',2,NULL),
+	 ('CUC ','Peso Convertible',2,NULL),
+	 ('CUP ','Cuban Peso',2,NULL),
+	 ('CVE ','Cabo Verde Escudo',2,NULL),
+	 ('CZK ','Czech Koruna',2,'Kč'),
+	 ('DJF ','Djibouti Franc',0,NULL),
+	 ('DKK ','Danish Krone',2,'kr'),
+	 ('DOP ','Dominican Peso',2,NULL),
+	 ('DZD ','Algerian Dinar',2,NULL),
+	 ('EGP ','Egyptian Pound',2,NULL),
+	 ('ERN ','Nakfa',2,NULL),
+	 ('ETB ','Ethiopian Birr',2,NULL),
+	 ('EUR ','Euro',2,'€'),
+	 ('FJD ','Fiji Dollar',2,NULL),
+	 ('FKP ','Falkland Islands Pound',2,NULL),
+	 ('GBP ','Pound Sterling',2,'£'),
+	 ('GEL ','Lari',2,'₾'),
+	 ('GHS ','Ghana Cedi',2,NULL),
+	 ('GIP ','Gibraltar Pound',2,NULL),
+	 ('GMD ','Dalasi',2,NULL),
+	 ('GNF ','Guinean Franc',0,NULL),
+	 ('GTQ ','Quetzal',2,NULL),
+	 ('GYD ','Guyana Dollar',2,NULL),
+	 ('HKD ','Hong Kong Dollar',2,'$'),
+	 ('HNL ','Lempira',2,NULL),
+	 ('HRK ','Kuna',2,'kn'),
+	 ('HTG ','Gourde',2,NULL),
+	 ('HUF ','Forint',2,'ft'),
+	 ('IDR ','Rupiah',2,'Rp'),
+	 ('ILS ','New Israeli Sheqel',2,'₪'),
+	 ('INR ','Indian Rupee',2,'₹'),
+	 ('IQD ','Iraqi Dinar',3,NULL),
+	 ('IRR ','Iranian Rial',2,NULL),
+	 ('ISK ','Iceland Krona',0,NULL),
+	 ('JMD ','Jamaican Dollar',2,NULL),
+	 ('JOD ','Jordanian Dinar',3,NULL),
+	 ('JPY ','Yen',0,'¥'),
+	 ('KES ','Kenyan Shilling',2,'Ksh'),
+	 ('KGS ','Som',2,NULL),
+	 ('KHR ','Riel',2,'៛'),
+	 ('KMF ','Comorian Franc ',0,NULL),
+	 ('KPW ','North Korean Won',2,NULL),
+	 ('KRW ','Won',0,'₩'),
+	 ('KWD ','Kuwaiti Dinar',3,NULL),
+	 ('KYD ','Cayman Islands Dollar',2,NULL),
+	 ('KZT ','Tenge',2,NULL),
+	 ('LAK ','Lao Kip',2,NULL),
+	 ('LBP ','Lebanese Pound',2,NULL),
+	 ('LKR ','Sri Lanka Rupee',2,'Rs'),
+	 ('LRD ','Liberian Dollar',2,NULL),
+	 ('LSL ','Loti',2,NULL),
+	 ('LYD ','Libyan Dinar',3,NULL),
+	 ('MAD ','Moroccan Dirham',2,' .د.م '),
+	 ('MDL ','Moldovan Leu',2,NULL),
+	 ('MGA ','Malagasy Ariary',2,NULL),
+	 ('MKD ','Denar',2,NULL),
+	 ('MMK ','Kyat',2,NULL),
+	 ('MNT ','Tugrik',2,NULL),
+	 ('MOP ','Pataca',2,NULL),
+	 ('MRU ','Ouguiya',2,NULL),
+	 ('MUR ','Mauritius Rupee',2,NULL),
+	 ('MVR ','Rufiyaa',2,NULL),
+	 ('MWK ','Malawi Kwacha',2,NULL),
+	 ('MXN ','Mexican Peso',2,'$');
+INSERT INTO asx.currency (code,currency,minor_unit,symbol) VALUES
+	 ('MXV ','Mexican Unidad de Inversion (UDI)',2,NULL),
+	 ('MYR ','Malaysian Ringgit',2,'RM'),
+	 ('MZN ','Mozambique Metical',2,NULL),
+	 ('NAD ','Namibia Dollar',2,NULL),
+	 ('NGN ','Naira',2,'₦'),
+	 ('NIO ','Cordoba Oro',2,NULL),
+	 ('NOK ','Norwegian Krone',2,'kr'),
+	 ('NPR ','Nepalese Rupee',2,NULL),
+	 ('NZD ','New Zealand Dollar',2,'$'),
+	 ('OMR ','Rial Omani',3,NULL),
+	 ('PAB ','Balboa',2,NULL),
+	 ('PEN ','Sol',2,'S'),
+	 ('PGK ','Kina',2,NULL),
+	 ('PHP ','Philippine Peso',2,'₱'),
+	 ('PKR ','Pakistan Rupee',2,'Rs'),
+	 ('PLN ','Zloty',2,'zł'),
+	 ('PYG ','Guarani',0,NULL),
+	 ('QAR ','Qatari Rial',2,NULL),
+	 ('RON ','Romanian Leu',2,'lei'),
+	 ('RSD ','Serbian Dinar',2,NULL),
+	 ('RUB ','Russian Ruble',2,'₽'),
+	 ('RWF ','Rwanda Franc',0,NULL),
+	 ('SAR ','Saudi Riyal',2,NULL),
+	 ('SBD ','Solomon Islands Dollar',2,NULL),
+	 ('SCR ','Seychelles Rupee',2,NULL),
+	 ('SDG ','Sudanese Pound',2,NULL),
+	 ('SEK ','Swedish Krona',2,'kr'),
+	 ('SGD ','Singapore Dollar',2,'$'),
+	 ('SHP ','Saint Helena Pound',2,NULL),
+	 ('SLL ','Leone',2,NULL),
+	 ('SOS ','Somali Shilling',2,NULL),
+	 ('SRD ','Surinam Dollar',2,NULL),
+	 ('SSP ','South Sudanese Pound',2,NULL),
+	 ('STN ','Dobra',2,NULL),
+	 ('SVC ','El Salvador Colon',2,NULL),
+	 ('SYP ','Syrian Pound',2,NULL),
+	 ('SZL ','Lilangeni',2,NULL),
+	 ('THB ','Baht',2,'฿'),
+	 ('TJS ','Somoni',2,NULL),
+	 ('TMT ','Turkmenistan New Manat',2,NULL),
+	 ('TND ','Tunisian Dinar',3,NULL),
+	 ('TOP ','Pa’anga',2,NULL),
+	 ('TRY ','Turkish Lira',2,'₺'),
+	 ('TTD ','Trinidad and Tobago Dollar',2,NULL),
+	 ('TWD ','New Taiwan Dollar',2,NULL),
+	 ('TZS ','Tanzanian Shilling',2,NULL),
+	 ('UAH ','Hryvnia',2,'₴'),
+	 ('UGX ','Uganda Shilling',0,NULL),
+	 ('USD ','US Dollar',2,'$'),
+	 ('USN ','US Dollar (Next day)',2,NULL),
+	 ('UYI ','Uruguay Peso en Unidades Indexadas (UI)',0,NULL),
+	 ('UYU ','Peso Uruguayo',2,NULL),
+	 ('UYW ','Unidad Previsional',4,NULL),
+	 ('UZS ','Uzbekistan Sum',2,NULL),
+	 ('VES ','Bolívar Soberano',2,NULL),
+	 ('VND ','Dong',0,'₫'),
+	 ('VUV ','Vatu',0,NULL),
+	 ('WST ','Tala',2,NULL),
+	 ('XAF ','CFA Franc BEAC',0,NULL),
+	 ('XCD ','East Caribbean Dollar',2,NULL),
+	 ('XDR ','SDR (Special Drawing Right)',0,NULL),
+	 ('XOF ','CFA Franc BCEAO',0,NULL),
+	 ('XPF ','CFP Franc',0,NULL),
+	 ('XSU ','Sucre',0,NULL),
+	 ('XUA ','ADB Unit of Account',0,NULL),
+	 ('YER ','Yemeni Rial',2,NULL),
+	 ('ZAR ','Rand',2,'R'),
+	 ('ZMW ','Zambian Kwacha',2,NULL),
+	 ('ZWL ','Zimbabwe Dollar',2,NULL);
 
 CREATE TABLE IF NOT EXISTS asx.country (
     alpha_3 char(3) PRIMARY KEY,
@@ -467,10 +642,216 @@ CREATE TABLE IF NOT EXISTS asx.country (
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone);
 
-INSERT INTO asx.country(
-	alpha_3, id, alpha_2, name)
-	SELECT alpha_3, id, alpha_2,  name
-	FROM equity.country AS EQUITY_COUNTRY;
+INSERT INTO asx.country (alpha_3,id,alpha_2,"name") VALUES
+	 ('afg',4,'af','Afghanistan'),
+	 ('alb',8,'al','Albania'),
+	 ('dza',12,'dz','Algeria'),
+	 ('and',20,'ad','Andorra'),
+	 ('ago',24,'ao','Angola'),
+	 ('atg',28,'ag','Antigua and Barbuda'),
+	 ('arg',32,'ar','Argentina'),
+	 ('arm',51,'am','Armenia'),
+	 ('abw',533,'aw','Aruba'),
+	 ('aus',36,'au','Australia'),
+	 ('aut',40,'at','Austria'),
+	 ('aze',31,'az','Azerbaijan'),
+	 ('bhs',44,'bs','Bahamas'),
+	 ('bhr',48,'bh','Bahrain'),
+	 ('bgd',50,'bd','Bangladesh'),
+	 ('brb',52,'bb','Barbados'),
+	 ('blr',112,'by','Belarus'),
+	 ('bel',56,'be','Belgium'),
+	 ('blz',84,'bz','Belize'),
+	 ('ben',204,'bj','Benin'),
+	 ('btn',64,'bt','Bhutan'),
+	 ('bol',68,'bo','Bolivia'),
+	 ('bih',70,'ba','Bosnia and Herzegovina'),
+	 ('bwa',72,'bw','Botswana'),
+	 ('bra',76,'br','Brazil'),
+	 ('brn',96,'bn','Brunei Darussalam'),
+	 ('bgr',100,'bg','Bulgaria'),
+	 ('bfa',854,'bf','Burkina Faso'),
+	 ('bdi',108,'bi','Burundi'),
+	 ('cpv',132,'cv','Cabo Verde'),
+	 ('khm',116,'kh','Cambodia'),
+	 ('cmr',120,'cm','Cameroon'),
+	 ('can',124,'ca','Canada'),
+	 ('caf',140,'cf','Central African Republic'),
+	 ('tcd',148,'td','Chad'),
+	 ('chl',152,'cl','Chile'),
+	 ('chn',156,'cn','China'),
+	 ('col',170,'co','Colombia'),
+	 ('com',174,'km','Comoros'),
+	 ('cog',178,'cg','Congo'),
+	 ('cod',180,'cd','Congo, Democratic Republic of the'),
+	 ('cri',188,'cr','Costa Rica'),
+	 ('civ',384,'ci','Côte d''Ivoire'),
+	 ('hrv',191,'hr','Croatia'),
+	 ('cub',192,'cu','Cuba'),
+	 ('cyp',196,'cy','Cyprus'),
+	 ('cze',203,'cz','Czechia'),
+	 ('dnk',208,'dk','Denmark'),
+	 ('dji',262,'dj','Djibouti'),
+	 ('dma',212,'dm','Dominica'),
+	 ('dom',214,'do','Dominican Republic'),
+	 ('ecu',218,'ec','Ecuador'),
+	 ('egy',818,'eg','Egypt'),
+	 ('slv',222,'sv','El Salvador'),
+	 ('gnq',226,'gq','Equatorial Guinea'),
+	 ('eri',232,'er','Eritrea'),
+	 ('est',233,'ee','Estonia'),
+	 ('swz',748,'sz','Eswatini'),
+	 ('eth',231,'et','Ethiopia'),
+	 ('fji',242,'fj','Fiji'),
+	 ('fin',246,'fi','Finland'),
+	 ('fra',250,'fr','France'),
+	 ('gab',266,'ga','Gabon'),
+	 ('gmb',270,'gm','Gambia'),
+	 ('geo',268,'ge','Georgia'),
+	 ('deu',276,'de','Germany'),
+	 ('gha',288,'gh','Ghana'),
+	 ('gib',292,'gi','Gibraltar'),
+	 ('grc',300,'gr','Greece'),
+	 ('grd',308,'gd','Grenada'),
+	 ('glp',312,'gp','Guadeloupe'),
+	 ('gtm',320,'gt','Guatemala'),
+	 ('gum',316,'gu','Guam'),
+	 ('ggy',831,'gg','Guernsey'),
+	 ('gin',324,'gn','Guinea'),
+	 ('gnb',624,'gw','Guinea-Bissau'),
+	 ('guy',328,'gy','Guyana'),
+	 ('hti',332,'ht','Haiti'),
+	 ('vat',336,'va','Holy See (Vatican)'),
+	 ('hnd',340,'hn','Honduras'),
+	 ('hkg',344,'hk','Hong Kong'),
+	 ('hun',348,'hu','Hungary'),
+	 ('isl',352,'is','Iceland'),
+	 ('ind',356,'in','India'),
+	 ('idn',360,'id','Indonesia'),
+	 ('irn',364,'ir','Iran (Islamic Republic of)'),
+	 ('irq',368,'iq','Iraq'),
+	 ('irl',372,'ie','Ireland'),
+	 ('isr',376,'il','Israel'),
+	 ('ita',380,'it','Italy'),
+	 ('jam',388,'jm','Jamaica'),
+	 ('jpn',392,'jp','Japan'),
+	 ('jor',400,'jo','Jordan'),
+	 ('kaz',398,'kz','Kazakhstan'),
+	 ('ken',404,'ke','Kenya'),
+	 ('kir',296,'ki','Kiribati'),
+	 ('prk',408,'kp','Korea (Democratic People''s Republic of)'),
+	 ('kor',410,'kr','Korea, Republic of'),
+	 ('kwt',414,'kw','Kuwait'),
+	 ('kgz',417,'kg','Kyrgyzstan');
+INSERT INTO asx.country (alpha_3,id,alpha_2,"name") VALUES
+	 ('lao',418,'la','Lao People''s Democratic Republic'),
+	 ('lva',428,'lv','Latvia'),
+	 ('lbn',422,'lb','Lebanon'),
+	 ('lso',426,'ls','Lesotho'),
+	 ('lbr',430,'lr','Liberia'),
+	 ('lby',434,'ly','Libya'),
+	 ('lie',438,'li','Liechtenstein'),
+	 ('ltu',440,'lt','Lithuania'),
+	 ('lux',442,'lu','Luxembourg'),
+	 ('mdg',450,'mg','Madagascar'),
+	 ('mwi',454,'mw','Malawi'),
+	 ('mys',458,'my','Malaysia'),
+	 ('mdv',462,'mv','Maldives'),
+	 ('mli',466,'ml','Mali'),
+	 ('mlt',470,'mt','Malta'),
+	 ('mhl',584,'mh','Marshall Islands'),
+	 ('mrt',478,'mr','Mauritania'),
+	 ('mus',480,'mu','Mauritius'),
+	 ('mex',484,'mx','Mexico'),
+	 ('fsm',583,'fm','Micronesia (Federated States of)'),
+	 ('mda',498,'md','Moldova, Republic of'),
+	 ('mco',492,'mc','Monaco'),
+	 ('mng',496,'mn','Mongolia'),
+	 ('mne',499,'me','Montenegro'),
+	 ('mar',504,'ma','Morocco'),
+	 ('moz',508,'mz','Mozambique'),
+	 ('mmr',104,'mm','Myanmar'),
+	 ('nam',516,'na','Namibia'),
+	 ('nru',520,'nr','Nauru'),
+	 ('npl',524,'np','Nepal'),
+	 ('nld',528,'nl','Netherlands'),
+	 ('nzl',554,'nz','New Zealand'),
+	 ('nic',558,'ni','Nicaragua'),
+	 ('ner',562,'ne','Niger'),
+	 ('nga',566,'ng','Nigeria'),
+	 ('mkd',807,'mk','North Macedonia'),
+	 ('nor',578,'no','Norway'),
+	 ('omn',512,'om','Oman'),
+	 ('pak',586,'pk','Pakistan'),
+	 ('plw',585,'pw','Palau'),
+	 ('pan',591,'pa','Panama'),
+	 ('png',598,'pg','Papua New Guinea'),
+	 ('pry',600,'py','Paraguay'),
+	 ('per',604,'pe','Peru'),
+	 ('phl',608,'ph','Philippines'),
+	 ('pol',616,'pl','Poland'),
+	 ('prt',620,'pt','Portugal'),
+	 ('qat',634,'qa','Qatar'),
+	 ('rou',642,'ro','Romania'),
+	 ('rus',643,'ru','Russian Federation'),
+	 ('rwa',646,'rw','Rwanda'),
+	 ('blm',652,'bl','Saint Barthélemy'),
+	 ('kna',659,'kn','Saint Kitts and Nevis'),
+	 ('lca',662,'lc','Saint Lucia'),
+	 ('vct',670,'vc','Saint Vincent and the Grenadines'),
+	 ('wsm',882,'ws','Samoa'),
+	 ('smr',674,'sm','San Marino'),
+	 ('stp',678,'st','Sao Tome and Principe'),
+	 ('sau',682,'sa','Saudi Arabia'),
+	 ('sen',686,'sn','Senegal'),
+	 ('srb',688,'rs','Serbia'),
+	 ('syc',690,'sc','Seychelles'),
+	 ('sle',694,'sl','Sierra Leone'),
+	 ('sgp',702,'sg','Singapore'),
+	 ('svk',703,'sk','Slovakia'),
+	 ('svn',705,'si','Slovenia'),
+	 ('slb',90,'sb','Solomon Islands'),
+	 ('som',706,'so','Somalia'),
+	 ('zaf',710,'za','South Africa'),
+	 ('ssd',728,'ss','South Sudan'),
+	 ('esp',724,'es','Spain'),
+	 ('lka',144,'lk','Sri Lanka'),
+	 ('sdn',729,'sd','Sudan'),
+	 ('sur',740,'sr','Suriname'),
+	 ('sjm',744,'sj','Svalbard and Jan Mayen'),
+	 ('swe',752,'se','Sweden'),
+	 ('che',756,'ch','Switzerland'),
+	 ('syr',760,'sy','Syrian Arab Republic'),
+	 ('tjk',762,'tj','Tajikistan'),
+	 ('tza',834,'tz','Tanzania, United Republic of'),
+	 ('tha',764,'th','Thailand'),
+	 ('tls',626,'tl','Timor-Leste'),
+	 ('tgo',768,'tg','Togo'),
+	 ('ton',776,'to','Tonga'),
+	 ('tto',780,'tt','Trinidad and Tobago'),
+	 ('tun',788,'tn','Tunisia'),
+	 ('tur',792,'tr','Türkiye'),
+	 ('tkm',795,'tm','Turkmenistan'),
+	 ('tca',796,'tc','Turks and Caicos Islands'),
+	 ('tuv',798,'tv','Tuvalu'),
+	 ('uga',800,'ug','Uganda'),
+	 ('ukr',804,'ua','Ukraine'),
+	 ('are',784,'ae','United Arab Emirates'),
+	 ('gbr',826,'gb','United Kingdom of Great Britain and Northern Ireland'),
+	 ('usa',840,'us','United States of America'),
+	 ('ury',858,'uy','Uruguay'),
+	 ('uzb',860,'uz','Uzbekistan'),
+	 ('vut',548,'vu','Vanuatu'),
+	 ('ven',862,'ve','Venezuela'),
+	 ('vnm',704,'vn','Vietnam');
+INSERT INTO asx.country (alpha_3,id,alpha_2,"name") VALUES
+	 ('vgb',92,'vg','Virgin Islands (British)'),
+	 ('vir',850,'vi','Virgin Islands (U.S.)'),
+	 ('wlf',876,'wf','Wallis and Futuna'),
+	 ('esh',732,'eh','Western Sahara'),
+	 ('yem',887,'ye','Yemen'),
+	 ('zmb',894,'zm','Zambia'),
+	 ('zwe',716,'zw','Zimbabwe');
 
 CREATE TABLE IF NOT EXISTS asx.country_currency (
     country_alpha_3 char(3) NOT NULL,
@@ -489,13 +870,232 @@ CREATE TABLE IF NOT EXISTS asx.country_currency (
         ON DELETE NO ACTION
     );
 
-INSERT INTO asx.country_currency(
-	country_alpha_3, currency_code)
-	SELECT alpha_3, code
-	FROM equity.currency
-	JOIN asx.country
-	ON country = name
-	ORDER BY alpha_3, code;
+INSERT INTO asx.country_currency (country_alpha_3,currency_code) VALUES
+	 ('abw','AWG '),
+	 ('afg','AFN '),
+	 ('ago','AOA '),
+	 ('alb','ALL '),
+	 ('and','EUR '),
+	 ('are','AED '),
+	 ('arg','ARS '),
+	 ('arm','AMD '),
+	 ('atg','XCD '),
+	 ('aus','AUD '),
+	 ('aut','EUR '),
+	 ('aze','AZN '),
+	 ('bdi','BIF '),
+	 ('bel','EUR '),
+	 ('ben','XOF '),
+	 ('bfa','XOF '),
+	 ('bgd','BDT '),
+	 ('bgr','BGN '),
+	 ('bhr','BHD '),
+	 ('bhs','BSD '),
+	 ('bih','BAM '),
+	 ('blm','EUR '),
+	 ('blr','BYN '),
+	 ('blz','BZD '),
+	 ('bol','BOB '),
+	 ('bol','BOV '),
+	 ('bra','BRL '),
+	 ('brb','BBD '),
+	 ('brn','BND '),
+	 ('btn','BTN '),
+	 ('btn','INR '),
+	 ('bwa','BWP '),
+	 ('caf','XAF '),
+	 ('can','CAD '),
+	 ('che','CHE '),
+	 ('che','CHF '),
+	 ('che','CHW '),
+	 ('chl','CLF '),
+	 ('chl','CLP '),
+	 ('chn','CNY '),
+	 ('civ','XOF '),
+	 ('cmr','XAF '),
+	 ('cod','CDF '),
+	 ('cog','XAF '),
+	 ('col','COP '),
+	 ('col','COU '),
+	 ('com','KMF '),
+	 ('cpv','CVE '),
+	 ('cri','CRC '),
+	 ('cub','CUC '),
+	 ('cub','CUP '),
+	 ('cyp','EUR '),
+	 ('cze','CZK '),
+	 ('deu','EUR '),
+	 ('dji','DJF '),
+	 ('dma','XCD '),
+	 ('dnk','DKK '),
+	 ('dom','DOP '),
+	 ('dza','DZD '),
+	 ('ecu','USD '),
+	 ('egy','EGP '),
+	 ('eri','ERN '),
+	 ('esh','MAD '),
+	 ('esp','EUR '),
+	 ('est','EUR '),
+	 ('eth','ETB '),
+	 ('fin','EUR '),
+	 ('fji','FJD '),
+	 ('fra','EUR '),
+	 ('fsm','USD '),
+	 ('gab','XAF '),
+	 ('gbr','GBP '),
+	 ('geo','GEL '),
+	 ('ggy','GBP '),
+	 ('gha','GHS '),
+	 ('gib','GIP '),
+	 ('gin','GNF '),
+	 ('glp','EUR '),
+	 ('gmb','GMD '),
+	 ('gnb','XOF '),
+	 ('gnq','XAF '),
+	 ('grc','EUR '),
+	 ('grd','XCD '),
+	 ('gtm','GTQ '),
+	 ('gum','USD '),
+	 ('guy','GYD '),
+	 ('hkg','HKD '),
+	 ('hnd','HNL '),
+	 ('hrv','HRK '),
+	 ('hti','HTG '),
+	 ('hti','USD '),
+	 ('hun','HUF '),
+	 ('idn','IDR '),
+	 ('ind','INR '),
+	 ('irl','EUR '),
+	 ('irn','IRR '),
+	 ('irq','IQD '),
+	 ('isl','ISK '),
+	 ('isr','ILS '),
+	 ('ita','EUR ');
+INSERT INTO asx.country_currency (country_alpha_3,currency_code) VALUES
+	 ('jam','JMD '),
+	 ('jor','JOD '),
+	 ('jpn','JPY '),
+	 ('kaz','KZT '),
+	 ('ken','KES '),
+	 ('kgz','KGS '),
+	 ('khm','KHR '),
+	 ('kir','AUD '),
+	 ('kna','XCD '),
+	 ('kor','KRW '),
+	 ('kwt','KWD '),
+	 ('lao','LAK '),
+	 ('lbn','LBP '),
+	 ('lbr','LRD '),
+	 ('lby','LYD '),
+	 ('lca','XCD '),
+	 ('lie','CHF '),
+	 ('lka','LKR '),
+	 ('lso','LSL '),
+	 ('lso','ZAR '),
+	 ('ltu','EUR '),
+	 ('lux','EUR '),
+	 ('lva','EUR '),
+	 ('mar','MAD '),
+	 ('mco','EUR '),
+	 ('mda','MDL '),
+	 ('mdg','MGA '),
+	 ('mdv','MVR '),
+	 ('mex','MXN '),
+	 ('mex','MXV '),
+	 ('mhl','USD '),
+	 ('mkd','MKD '),
+	 ('mli','XOF '),
+	 ('mlt','EUR '),
+	 ('mmr','MMK '),
+	 ('mne','EUR '),
+	 ('mng','MNT '),
+	 ('moz','MZN '),
+	 ('mrt','MRU '),
+	 ('mus','MUR '),
+	 ('mwi','MWK '),
+	 ('mys','MYR '),
+	 ('nam','NAD '),
+	 ('nam','ZAR '),
+	 ('ner','XOF '),
+	 ('nga','NGN '),
+	 ('nic','NIO '),
+	 ('nld','EUR '),
+	 ('nor','NOK '),
+	 ('npl','NPR '),
+	 ('nru','AUD '),
+	 ('nzl','NZD '),
+	 ('omn','OMR '),
+	 ('pak','PKR '),
+	 ('pan','PAB '),
+	 ('pan','USD '),
+	 ('per','PEN '),
+	 ('phl','PHP '),
+	 ('plw','USD '),
+	 ('png','PGK '),
+	 ('pol','PLN '),
+	 ('prk','KPW '),
+	 ('prt','EUR '),
+	 ('pry','PYG '),
+	 ('qat','QAR '),
+	 ('rou','RON '),
+	 ('rus','RUB '),
+	 ('rwa','RWF '),
+	 ('sau','SAR '),
+	 ('sdn','SDG '),
+	 ('sen','XOF '),
+	 ('sgp','SGD '),
+	 ('sjm','NOK '),
+	 ('slb','SBD '),
+	 ('sle','SLL '),
+	 ('slv','SVC '),
+	 ('slv','USD '),
+	 ('smr','EUR '),
+	 ('som','SOS '),
+	 ('srb','RSD '),
+	 ('ssd','SSP '),
+	 ('stp','STN '),
+	 ('sur','SRD '),
+	 ('svk','EUR '),
+	 ('svn','EUR '),
+	 ('swe','SEK '),
+	 ('swz','SZL '),
+	 ('syc','SCR '),
+	 ('syr','SYP '),
+	 ('tca','USD '),
+	 ('tcd','XAF '),
+	 ('tgo','XOF '),
+	 ('tha','THB '),
+	 ('tjk','TJS '),
+	 ('tkm','TMT '),
+	 ('tls','USD '),
+	 ('ton','TOP '),
+	 ('tto','TTD '),
+	 ('tun','TND '),
+	 ('tur','TRY ');
+INSERT INTO asx.country_currency (country_alpha_3,currency_code) VALUES
+	 ('tuv','AUD '),
+	 ('tza','TZS '),
+	 ('uga','UGX '),
+	 ('ukr','UAH '),
+	 ('ury','UYI '),
+	 ('ury','UYU '),
+	 ('ury','UYW '),
+	 ('usa','USD '),
+	 ('usa','USN '),
+	 ('uzb','UZS '),
+	 ('vat','EUR '),
+	 ('vct','XCD '),
+	 ('ven','VES '),
+	 ('vgb','USD '),
+	 ('vir','USD '),
+	 ('vnm','VND '),
+	 ('vut','VUV '),
+	 ('wlf','XPF '),
+	 ('wsm','WST '),
+	 ('yem','YER '),
+	 ('zaf','ZAR '),
+	 ('zmb','ZMW '),
+	 ('zwe','ZWL ');
 
 CREATE TABLE IF NOT EXISTS asx.exchange (
     code char(8) PRIMARY KEY,
@@ -515,6 +1115,128 @@ CREATE TABLE IF NOT EXISTS asx.exchange (
 INSERT INTO asx.exchange (code, name, definition, country_alpha_3, currency_code, start_date, end_date) VALUES
 	('ASX', 'Australian Securities Exchange', 'ASX stands for Australian Securities Exchange. It was created by the merger of the Australian Stock Exchange and the Sydney Futures Exchange in July 2006 and is one of the world’s top-10 listed exchange groups measured by market capitalisation.', 'aus', 'AUD', '2006-07-01', NULL);
 
+CREATE TABLE asx.ticker_type (
+    code varchar(32) PRIMARY KEY,
+    description varchar(255),
+	start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone);
+
+COMMENT ON TABLE asx.ticker_type IS 'An identifier for a group of similar financial instruments.';
+
+
+INSERT INTO asx.ticker_type (code, description) VALUES
+    ('crypto', Null),
+    ('fx', Null),
+    ('index', Null),
+    ('option', Null),
+    ('stock', Null),
+    ('bullion', Null),
+    ('etp', Null);
+
+CREATE TABLE asx.dividend_type (
+    code char(2) PRIMARY KEY,
+    description varchar(255),
+	start_date date DEFAULT NULL,
+    end_date date DEFAULT NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone);
+
+COMMENT ON TABLE asx.dividend_type IS 'The type of dividend.';
+
+COMMENT ON COLUMN asx.dividend_type.code IS 'A code used by to refer to this dividend type.';
+COMMENT ON COLUMN asx.dividend_type.description IS 'A short description of this dividend type.';
+
+INSERT INTO asx.dividend_type (code, description) VALUES
+    ('CD', 'Dividend on consistent schedule'),
+    ('SC', 'Special cash dividend'),
+    ('LT', 'Long-Term capital gain distribution'),
+    ('ST', 'Short-Term capital gain distribution');
+
+CREATE TABLE asx.split (
+    id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    execution_date timestamp NULL,
+    split_from integer NULL,
+    split_to integer NULL,
+	ticker_id integer NULL,
+    ticker varchar(32) NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+	CONSTRAINT unique_split
+		UNIQUE (ticker, execution_date));
+
+COMMENT ON TABLE asx.split IS 'Split contains data for a historical stock split, including the ticker symbol, the execution date, and the factors of the split ratio.';
+
+COMMENT ON COLUMN asx.split.execution_date IS 'The execution date of the stock split. On this date the stock split was applied.';
+COMMENT ON COLUMN asx.split.split_from IS 'The second number in the split ratio. For example: In a 2-for-1 split, split_from would be 1.';
+COMMENT ON COLUMN asx.split.split_to IS 'The first number in the split ratio. For example: In a 2-for-1 split, split_to would be 2.';
+COMMENT ON COLUMN asx.split.ticker IS 'The ticker symbol of the stock split.';
+
+CREATE TABLE asx.dividend (
+    id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    cash_amount numeric(19,4) NULL,
+    currency varchar(50) NULL,
+    declaration_date timestamp NULL,
+    dividend_type varchar(32) NULL,
+    ex_dividend_date timestamp NULL,
+    frequency integer NULL,
+    pay_date timestamp NULL,
+    record_date timestamp NULL,
+	ticker_id integer NULL,
+    ticker varchar(32) NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+	CONSTRAINT unique_dividend 
+		UNIQUE (cash_amount, ticker_id, ex_dividend_date, dividend_type));
+
+COMMENT ON COLUMN asx.dividend.cash_amount IS 'The cash amount of the dividend per share owned.';
+COMMENT ON COLUMN asx.dividend.currency IS 'The currency in which the dividend is paid.';
+COMMENT ON COLUMN asx.dividend.declaration_date IS 'The date that the dividend was announced.';
+COMMENT ON COLUMN asx.dividend.dividend_type IS 'The type of dividend. Dividends that have been paid and/or are expected to be paid on consistent schedules are denoted as CD. Special Cash dividends that have been paid that are infrequent or unusual, and/or can not be expected to occur in the future are denoted as SC. Long-Term and Short-Term capital gain distributions are denoted as LT and ST, respectively.';
+COMMENT ON COLUMN asx.dividend.ex_dividend_date IS 'The date that the stock first trades without the dividend, determined by the exchange.';
+COMMENT ON COLUMN asx.dividend.frequency IS 'The number of times per year the dividend is paid out. Possible values are 0 (one-time), 1 (annually), 2 (bi-annually), 4 (quarterly), and 12 (monthly).';
+COMMENT ON COLUMN asx.dividend.pay_date IS 'The date that the dividend is paid out.';
+COMMENT ON COLUMN asx.dividend.record_date IS 'The date that the stock must be held to receive the dividend, set by the company.';
+COMMENT ON COLUMN asx.dividend.ticker IS 'The ticker symbol of the dividend.';
+
+
+CREATE TABLE IF NOT EXISTS asx.watchlist_group (
+    name varchar(32) PRIMARY KEY,
+    definition varchar(1000)  NULL,
+    start_date date NULL,
+    end_date date NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone);
+
+INSERT INTO asx.watchlist_group (name, definition, start_date, end_date) VALUES
+	('GICS Sector Indices', 'Indices that reflect specific GICS sectors.', '2024-07-08', NULL),
+	('Exchange Indices', 'Indices that reflect a specific exchange.', '2024-07-08', NULL),
+	('Broker accounts', 'Stocks held under specifc brokers.', '2024-07-08', NULL);
+
+CREATE TABLE IF NOT EXISTS asx.watchlist (
+    name varchar(32) NOT NULL,
+	watchlist_group_name varchar(32) NOT NULL,
+    definition varchar(1000) NULL,
+    start_date date NULL,
+    end_date date NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+	CONSTRAINT pk_watchlist
+    	PRIMARY KEY(watchlist_group_name, name),
+	CONSTRAINT fk_watchlist_watchlist_group
+        FOREIGN KEY(watchlist_group_name)
+        REFERENCES asx.watchlist_group(name)
+        ON DELETE NO ACTION);
+
+INSERT INTO asx.watchlist (name, watchlist_group_name, definition, start_date, end_date) VALUES
+	('ASX Sectors', 'GICS Sector Indices', 'Indices that reflect the ASX GICS sectors.', '2024-07-08', NULL),
+	('ASX', 'Exchange Indices', 'Indices that reflect the ASX exchange.', '2024-07-08', NULL),
+	('Interactive Brokers', 'Broker accounts', 'Stocks held at Interactive Brokers.', '2024-07-08', NULL),
+	('CommSec - Rob & Sue', 'Broker accounts', 'Stocks held at CommSec under Rob & Sue.', '2024-07-08', NULL),
+	('CommSec - SuperBebbs', 'Broker accounts', 'Stocks held at CommSec under SuperBebbs.', '2024-07-08', NULL),
+	('eBroker - SuperBebbs', 'Broker accounts', 'Stocks held at eBroker under SuperBebbs.', '2024-07-08', NULL);
+
 CREATE TABLE asx.ticker (
     id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     ticker varchar(32) NOT NULL,
@@ -526,11 +1248,11 @@ CREATE TABLE asx.ticker (
     gics_sub_industry_code char(8) NULL,
     exchange_code char(8) NOT NULL,
     listed_utc timestamp NULL, 
+    delisted_utc timestamp NULL, 
     listcorp_url varchar(255) NULL,
-    market_type varchar(32) NULL,    
-    asset_class_type varchar(32) NULL,
-    start_date date DEFAULT NULL,
-    end_date date DEFAULT NULL,
+    ticker_type_code varchar(32) NULL,
+    start_date date NULL,
+    end_date date NULL,
     created_date timestamp with time zone DEFAULT current_timestamp,
     last_updated_date timestamp with time zone,
 	CONSTRAINT unique_ticker 
@@ -539,13 +1261,9 @@ CREATE TABLE asx.ticker (
         FOREIGN KEY(exchange_code)
         REFERENCES asx.exchange(code)
         ON DELETE NO ACTION,
-    CONSTRAINT fk_ticker_market
-        FOREIGN KEY(market_type)
-        REFERENCES equity.market(type)
-        ON DELETE NO ACTION,
-    CONSTRAINT fk_ticker_asset_class
-        FOREIGN KEY(asset_class_type)
-        REFERENCES equity.asset_class(type)
+    CONSTRAINT fk_ticker_ticker_type
+        FOREIGN KEY(ticker_type_code)
+        REFERENCES asx.ticker_type(code)
         ON DELETE NO ACTION,
     CONSTRAINT fk_ticker_sector
         FOREIGN KEY(gics_sector_code)
@@ -567,6 +1285,32 @@ CREATE TABLE asx.ticker (
 COMMENT ON COLUMN asx.ticker.name IS 'The name of the asset. For stocks/equities this will be the companies registered name. For crypto/fx this will be the name of the currency or coin pair.';
 COMMENT ON COLUMN asx.ticker.ticker IS 'The exchange symbol that this item is traded under.';
 
+CREATE TABLE IF NOT EXISTS asx.watchlist_ticker (
+	id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	watchlist_group_name varchar(32) NOT NULL,
+    watchlist_name varchar(32) NOT NULL,
+    ticker_id integer NOT NULL,
+	gics_sector_code char(2) NULL,
+    start_date date NULL,
+    end_date date NULL,
+    created_date timestamp with time zone DEFAULT current_timestamp,
+    last_updated_date timestamp with time zone,
+	CONSTRAINT fk_watchlist_ticker_watchlist
+        FOREIGN KEY(watchlist_group_name, watchlist_name)
+        REFERENCES asx.watchlist(watchlist_group_name, name)
+        ON DELETE NO ACTION,
+	CONSTRAINT fk_watchlist_ticker_ticker
+        FOREIGN KEY(ticker_id)
+        REFERENCES asx.ticker(id)
+        ON DELETE NO ACTION,
+	CONSTRAINT fk_ticker_sector
+        FOREIGN KEY(gics_sector_code)
+        REFERENCES asx.gics_sector(code)
+        ON DELETE NO ACTION,
+	CONSTRAINT unique_watchlist_ticker
+		UNIQUE (watchlist_group_name, watchlist_name, ticker_id));
+
+
 CREATE TABLE asx.daily_price (
     id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     data_vendor_id integer NOT NULL,
@@ -585,14 +1329,14 @@ CREATE TABLE asx.daily_price (
     last_updated_date timestamp with time zone,
 	CONSTRAINT fk_daily_price_data_vendor
         FOREIGN KEY(data_vendor_id)
-        REFERENCES equity.data_vendor(id)
+        REFERENCES asx.data_vendor(id)
         ON DELETE NO ACTION,
     CONSTRAINT fk_daily_price_ticker
         FOREIGN KEY(ticker_id)
         REFERENCES asx.ticker(id)
         ON DELETE CASCADE,
 	CONSTRAINT unique_daily_price 
-		UNIQUE (data_vendor_id, ticker, date));
+		UNIQUE (data_vendor_id, exchange_code, ticker, date));
 
 COMMENT ON COLUMN asx.daily_price.ticker IS 'The exchange symbol that this item is traded under.';
 COMMENT ON COLUMN asx.daily_price.close IS 'The close price for the symbol in the given time period.';
@@ -601,64 +1345,3 @@ COMMENT ON COLUMN asx.daily_price.low IS 'The lowest price for the symbol in the
 COMMENT ON COLUMN asx.daily_price.open IS 'The open price for the symbol in the given time period.';
 COMMENT ON COLUMN asx.daily_price.volume IS 'The trading volume of the symbol in the given time period.';
 COMMENT ON COLUMN asx.daily_price.volume_weighted_average_price IS 'The volume weighted average price.';
-
-CREATE TABLE IF NOT EXISTS asx.watchlist_group (
-    name varchar(32) PRIMARY KEY,
-    definition varchar(1000) DEFAULT NULL,
-    start_date date DEFAULT NULL,
-    end_date date DEFAULT NULL,
-    created_date timestamp with time zone DEFAULT current_timestamp,
-    last_updated_date timestamp with time zone);
-
-INSERT INTO asx.watchlist_group (name, definition, start_date, end_date) VALUES
-	('GICS Sector Indices', 'Indices that reflect specific GICS sectors.', '2024-07-08', NULL),
-	('Exchange Indices', 'Indices that reflect a specific exchange.', '2024-07-08', NULL),
-	('Broker accounts', 'Stocks held under specifc brokers.', '2024-07-08', NULL);
-
-CREATE TABLE IF NOT EXISTS asx.watchlist (
-    name varchar(32) NOT NULL,
-	watchlist_group_name varchar(32) NOT NULL,
-    definition varchar(1000) DEFAULT NULL,
-    start_date date DEFAULT NULL,
-    end_date date DEFAULT NULL,
-    created_date timestamp with time zone DEFAULT current_timestamp,
-    last_updated_date timestamp with time zone,
-	CONSTRAINT pk_watchlist
-    	PRIMARY KEY(watchlist_group_name, name),
-	CONSTRAINT fk_watchlist_watchlist_group
-        FOREIGN KEY(watchlist_group_name)
-        REFERENCES asx.watchlist_group(name)
-        ON DELETE NO ACTION);
-
-INSERT INTO asx.watchlist (name, watchlist_group_name, definition, start_date, end_date) VALUES
-	('ASX Sectors', 'GICS Sector Indices', 'Indices that reflect the ASX GICS sectors.', '2024-07-08', NULL),
-	('ASX', 'Exchange Indices', 'Indices that reflect the ASX exchange.', '2024-07-08', NULL),
-	('Interactive Brokers', 'Broker accounts', 'Stocks held at Interactive Brokers.', '2024-07-08', NULL),
-	('CommSec - Rob & Sue', 'Broker accounts', 'Stocks held at CommSec under Rob & Sue.', '2024-07-08', NULL),
-	('CommSec - SuperBebbs', 'Broker accounts', 'Stocks held at CommSec under SuperBebbs.', '2024-07-08', NULL),
-	('eBroker - SuperBebbs', 'Broker accounts', 'Stocks held at eBroker under SuperBebbs.', '2024-07-08', NULL);
-
-CREATE TABLE IF NOT EXISTS asx.watchlist_ticker (
-	id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	watchlist_group_name varchar(32) NOT NULL,
-    watchlist_name varchar(32) NOT NULL,
-    ticker_id integer NOT NULL,
-	gics_sector_code char(2) NULL,
-    start_date date DEFAULT NULL,
-    end_date date DEFAULT NULL,
-    created_date timestamp with time zone DEFAULT current_timestamp,
-    last_updated_date timestamp with time zone,
-	CONSTRAINT fk_watchlist_ticker_watchlist
-        FOREIGN KEY(watchlist_group_name, watchlist_name)
-        REFERENCES asx.watchlist(watchlist_group_name, name)
-        ON DELETE NO ACTION,
-	CONSTRAINT fk_watchlist_ticker_ticker
-        FOREIGN KEY(ticker_id)
-        REFERENCES asx.ticker(id)
-        ON DELETE NO ACTION,
-	CONSTRAINT fk_ticker_sector
-        FOREIGN KEY(gics_sector_code)
-        REFERENCES asx.gics_sector(code)
-        ON DELETE NO ACTION,
-	CONSTRAINT unique_watchlist_ticker
-		UNIQUE (watchlist_group_name, watchlist_name, ticker_id));

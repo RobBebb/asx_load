@@ -11,3 +11,6 @@ The ASX has a CSV list of companies that can be downloaded from this webpage (Co
 ### ASX Code Changes
 (ASX Code and Compnay Name Changes)[https://www.asx.com.au/markets/market-resources/asx-codes-and-descriptors/asx-code-changes]
 
+## Install yfinance
+
+pip install "yfinance[nospam, repair]"

@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import pandas as pd
 from securities_load.load.postgresql_database_functions import connect
 from asx_load.load.asx_functions import (get_ticker_id, get_gics_sector_code, 
-    get_gics_industry_group_code, get_gics_industry_code, get_gics_sub_industry_code)
+    get_gics_industry_group_code, get_gics_industry_code, get_gics_sub_industry_code,
+    get_ticker_id_using_yahoo_ticker, get_ticker_using_id)
 
 class TestGetTicker(unittest.TestCase):
     def setUp(self):
@@ -17,6 +18,34 @@ class TestGetTicker(unittest.TestCase):
 
     def tearDown(self):
         self.conn.close()
+
+class TestGetTickerUsingYahooTicker(unittest.TestCase):
+    def setUp(self):
+        self.conn = connect()
+    
+    def test_get_ticker_id_found(self):
+        self.assertEqual(get_ticker_id_using_yahoo_ticker(self.conn, 'BHP.AX'), 250)
+        
+    def test_get_ticker_id_not_found(self):
+        self.assertEqual(get_ticker_id_using_yahoo_ticker(self.conn, 'ZZZ.AX'), None)
+
+    def tearDown(self):
+        self.conn.close()
+
+class TestGetTickerUsingTickerId(unittest.TestCase):
+    def setUp(self):
+        self.conn = connect()
+    
+    def test_get_ticker_using_ticker_found(self):
+        self.assertEqual(get_ticker_using_id(self.conn, 250), ('BHP', 'ASX'))
+        
+    def test_get_ticker_id_using_ticker_not_found(self):
+        self.assertEqual(get_ticker_using_id(self.conn, 888888), None)
+
+    def tearDown(self):
+        self.conn.close()
+
+
 
 class TestGetGicsSectorCode(unittest.TestCase):
     def setUp(self):
